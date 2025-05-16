@@ -11,8 +11,24 @@ STATES = {
     "choose_entry_point": "choose_entry_point",
     "office_zone": "office_zone",
     "underground": "underground",
-    "roof": "roof"
+    "roof": "roof",
+    "inside_building": "inside_building",
+    "server_room_choice": "server_room_choice",
+    "final_corona": "final_corona",
+    "end_game": "end_game"
 }
+
+# Инвентарь пользователя
+user_inventory = {}  # {user_id: [items]}
+
+# Предметы
+ITEMS = [
+    "Планшет",
+    "Газовая капсула",
+    "Маскировочный костюм M3",
+    "Голосовой клонер",
+    "Дрон-приманка",
+]
 
 # Кнопки
 def get_keyboard(options):
@@ -27,6 +43,7 @@ def get_keyboard(options):
 def start(message):
     user_id = message.from_user.id
     user_states[user_id] = STATES["start"]
+    user_inventory[user_id] = ITEMS.copy()  # Добавляем все предметы в инвентарь
 
     welcome_text = (
         "👁️ Приветствую, Агент Ноль.\n\n"
@@ -129,12 +146,103 @@ def office_zone_choice(message):
     ]
     keyboard = get_keyboard(buttons)
     bot.send_message(message.chat.id, "Выбери дальнейшее действие:", reply_markup=keyboard)
+    user_states[user_id] = STATES["inside_building"]
 
 
-# Заглушка для остальных шагов
-@bot.message_handler(func=lambda message: user_states.get(message.from_user.id) in [STATES["underground"], STATES["roof"]])
-def generic_step(message):
-    bot.reply_to(message, f"Вы выбрали: {message.text}\nЭтот шаг ещё в разработке...")
+# Внутри здания
+@bot.message_handler(func=lambda message: user_states.get(message.from_user.id) == STATES["inside_building"])
+def inside_building_choice(message):
+    user_id = message.from_user.id
+    choice = message.text
+
+    if choice == "Изучить данные на планшете":
+        bot.reply_to(message, "📊 Ты изучаешь данные. Узнал маршрут передвижения Короны и слабые места системы безопасности.")
+
+    elif choice == "Найти секретаря и получить информацию о графике Короны":
+        bot.reply_to(message, "📄 Секретарь сообщил тебе точное расписание Короны. Он будет один в 14:00.")
+
+    elif choice == "Проникнуть в серверную комнату":
+        bot.send_message(message.chat.id, "🔒 Ты приближаешься к серверной. На двери кодовый замок.")
+        bot.send_message(message.chat.id, "Попробуешь взломать?")
+        user_states[user_id] = STATES["server_room_choice"]
+        return
+
+    elif choice == "Перейти к финальному этажу напрямую":
+        final_corona_dialog(message)
+        return
+
+    else:
+        bot.reply_to(message, "❌ Неизвестное действие.")
+        return
+
+    bot.send_message(message.chat.id, "Выбери следующее действие:", reply_markup=get_keyboard([
+        "Изучить данные на планшете",
+        "Найти секретаря и получить информацию о графике Короны",
+        "Проникнуть в серверную комнату",
+        "Перейти к финальному этажу напрямую"
+    ]))
+
+
+# Серверная комната
+@bot.message_handler(func=lambda message: user_states.get(message.from_user.id) == STATES["server_room_choice"])
+def server_room_choice(message):
+    user_id = message.from_user.id
+    choice = message.text.lower()
+
+    if "да" in choice or "взлом" in choice:
+        bot.reply_to(message, "🔓 Ты успешно взломал систему. Отключил камеры и получил дополнительный доступ.")
+        bot.reply_to(message, "Теперь ты можешь беспрепятственно пройти к Короне.")
+    else:
+        bot.reply_to(message, "🚫 Ты решил не рисковать. Возвращаешься к основному маршруту.")
+
+    final_corona_dialog(message)
+
+
+# Диалог с Короной
+def final_corona_dialog(message):
+    user_id = message.from_user.id
+    user_states[user_id] = STATES["final_corona"]
+
+    text = (
+        "👤 Ты входишь в кабинет Короны. Он один. Он говорит:\n\n"
+        "«Я знаю, кто ты. Я не враг. Я был направлен внутрь, чтобы собрать доказательства предательства. Мои данные могут спасти нас всех. Ты готов мне поверить?»\n\n"
+        "Как ты поступишь?"
+    )
+
+    buttons = [
+        "Устранить его немедленно",
+        "Выслушать его",
+        "Забрать его с собой",
+        "Оставить его в покое"
+    ]
+
+    bot.send_message(message.chat.id, text, reply_markup=get_keyboard(buttons))
+
+
+# Обработка финального выбора
+@bot.message_handler(func=lambda message: user_states.get(message.from_user.id) == STATES["final_corona"])
+def final_choice(message):
+    user_id = message.from_user.id
+    choice = message.text
+
+    if choice == "Устранить его немедленно":
+        bot.send_message(message.chat.id, "💀 Ты выполнил приказ. Корона мёртв. Цель достигнута.\n\nНо в базе данных ты находишь файлы, которые говорят о твоём собственном устранении...\n\nТы стал частью машины... пока она не обратилась к тебе.")
+
+    elif choice == "Выслушать его":
+        bot.send_message(message.chat.id, "⚖️ Ты выслушал Корону. Оказалось, он был наш человек. Он дал тебе доказательства измены руководства.\n\nТеперь ты должен принять решение…")
+
+    elif choice == "Забрать его с собой":
+        bot.send_message(message.chat.id, "✅ Ты вывел Корону. Он доказал свою невиновность. Теперь ты герой.\n\nТы выбрал путь разума. Мир стал немного лучше.")
+
+    elif choice == "Оставить его в покое":
+        bot.send_message(message.chat.id, "🔍 Ты оставил Корону одного. Пора начать своё расследование...\n\nТы доверил фактам больше, чем приказам.")
+
+    else:
+        bot.reply_to(message, "❌ Неизвестное действие.")
+        return
+
+    bot.send_message(message.chat.id, "🔚 Игра окончена. Спасибо за прохождение!", reply_markup=types.ReplyKeyboardRemove())
+    user_states[user_id] = STATES["end_game"]
 
 
 # Запуск бота
