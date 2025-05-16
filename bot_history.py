@@ -1,7 +1,7 @@
 import telebot
+from telebot import types  # Теперь всё работает!
 
 bot = telebot.TeleBot("YOUR_BOT_API_TOKEN_HERE")
-
 # Хранение состояний пользователей
 user_states = {}  # {user_id: current_state}
 
