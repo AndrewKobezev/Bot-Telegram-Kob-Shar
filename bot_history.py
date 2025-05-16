@@ -1,7 +1,7 @@
 import telebot
 from telebot import types  # Теперь всё работает!
 
-bot = telebot.TeleBot("YOUR_BOT_API_TOKEN_HERE")
+bot = telebot.TeleBot("6457140451:AAFwMkZ1XouwTAdvX_qyoKTGAnSq5Uo6pbo")
 # Хранение состояний пользователей
 user_states = {}  # {user_id: current_state}
 
@@ -113,6 +113,24 @@ def choose_entry_point(message):
     keyboard = get_keyboard(buttons)
     bot.send_message(message.chat.id, text, reply_markup=keyboard)
 
+
+# Обработка подземных коммуникаций
+@bot.message_handler(func=lambda message: user_states.get(message.from_user.id) == STATES["underground"])
+def underground_choice(message):
+    user_id = message.from_user.id
+    choice = message.text
+
+    if choice == "Вернуться обратно":
+        user_states[user_id] = STATES["start"]
+        start(message)
+        return
+
+    # Здесь можно добавить логику действий внутри подземелья
+    bot.reply_to(message, f"Вы выбрали: {choice}. Пока ничего не произошло...")
+
+    # Пример продолжения (можно расширять)
+    if choice == "Вскрыть решётку и проникнуть внутрь":
+        bot.reply_to(message, "🔓 Ты вскрыл решётку. Теперь двигаешься по туннелю...")
 
 # Обработка офисной зоны
 @bot.message_handler(func=lambda message: user_states.get(message.from_user.id) == STATES["office_zone"])
